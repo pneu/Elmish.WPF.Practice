@@ -5,8 +5,7 @@ open Elmish.WPF;
 open MyNamespace;
 
 type User = {
-    mutable IsSelected: bool
-    // IsSelected: bool
+    IsSelected: bool
     Name: string
 }
 
@@ -37,30 +36,26 @@ type Msg =
     | Increment
     | Decrement
     | SetStepSize of int
-    // | Toggle of (User * bool)
-    | Ignore
+    | Toggle of User * bool
 
 type SubMsg =
     | ToggleSelected of bool
+
+let subUpdate msg sm =
+    match msg with
+    | ToggleSelected x -> { sm with IsSelected = x }
 
 let update msg m =
     match msg with
     | Increment -> { m with Count = m.Count + m.StepSize }
     | Decrement -> { m with Count = m.Count - m.StepSize }
     | SetStepSize x -> { m with StepSize = x }
-    | Ignore -> m
-    // | Toggle (user, v) ->
-    //     { m with Users = m.Users |> List.map (fun u ->
-    //                                             if user = u
-    //                                             then subUpdate (ToggleSelected v) u
-    //                                             else u) }
-
-let subUpdate msg sm =
-    match msg with
-    | ToggleSelected x ->
-        sm.IsSelected <- x
-        sm
-    // | ToggleSelected x -> { sm with IsSelected = x }
+    | Toggle (user, v) ->
+        // Why do I search for the submodel from parent?
+        { m with Users = m.Users |> List.map (fun u ->
+                                                if user = u
+                                                then subUpdate (ToggleSelected v) u
+                                                else u) }
 
 let bindings () =
     [
@@ -75,15 +70,12 @@ let bindings () =
         "UserList" |> Binding.subModelSeq (
             (fun m -> m.Users),
             (fun sm -> sm.Name),
-            (fun _ -> Ignore),
             (fun () -> [
                 "Name" |> Binding.oneWay (fun (_, user) -> user.Name)
-                // "IsSelected" |> Binding.twoWay (
-                //     (fun (_, user) -> user.IsSelected),
-                //     (fun value (_, user) -> Toggle (user, value)))
                 "IsSelected" |> Binding.twoWay (
                     (fun (_, user) -> user.IsSelected),
-                    ToggleSelected)
+                    // I want to update this submodel directly.
+                    (fun value (_, user) -> Toggle (user, value)))
             ])
         )
     ]
